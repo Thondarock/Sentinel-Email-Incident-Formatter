@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel Email Incident Formatter</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0d2c6c;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .text-areas {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .box {
+            flex: 1;
+            min-width: 300px;
+        }
+        textarea {
+            width: 100%;
+            height: 500px;
+            padding: 15px;
+            border: 1px solid #dddfe2;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: "Courier New", Courier, monospace;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #1877f2;
+            box-shadow: 0 0 0 2px #e7f3ff;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #606770;
+        }
+        .button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        button {
+            background-color: #1877f2;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #166fe5;
+        }
+        #copyButton {
+            background-color: #42b72a;
+            margin-left: 10px;
+        }
+        #copyButton:hover {
+            background-color: #36a420;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Sentinel Email Incident Formatter</h1>
+    <div class="text-areas">
+        <div class="box">
+            <label for="rawDataInput">1. Paste Raw Data Here</label>
+            <textarea id="rawDataInput" placeholder="Paste the raw email data from Sentinel..."></textarea>
+        </div>
+        <div class="box">
+            <label for="formattedOutput">2. Formatted Output</label>
+            <textarea id="formattedOutput" readonly placeholder="Your formatted text will appear here..."></textarea>
+        }
+        </div>
+    </div>
+    <div class="button-container">
+        <button id="formatButton">Format Incident Data</button>
+        <button id="copyButton">Copy to Clipboard</button>
+    </div>
+</div>
+
+<script>
+    document.getElementById('formatButton').addEventListener('click', function() {
+        const rawData = document.getElementById('rawDataInput').value;
+        const outputArea = document.getElementById('formattedOutput');
+
+        // --- Helper Functions ---
+        const defang = (str) => {
+            if (typeof str !== 'string') return str;
+            return str.replace(/\./g, '[.]');
+        };
+
+        const extract = (key) => {
+            const regex = new RegExp(`^${key}\\s*\\n([^\\n]+)`, 'im');
+            const match = rawData.match(regex);
+            return match ? match[1].trim() : 'N/A';
+        };
+
+        const subject = rawData.match(/^Subject\s*:(.*)/im)?.[1].trim() || 'N/A';
+        const recipient = extract('Recipient\\(s\\)');
+        const senderMailFrom = extract('Sender mail from address');
+        const senderAddress = extract('Sender address');
+        const senderIp = extract('Sender IP');
+        const timeReceived = extract('Time received \\(UTC \\+05:30\\)');
+        const directionality = extract('Directionality');
+        const networkMessageId = extract('Network message ID');
+        const internetMessageId = extract('Internet message ID');
+        const originalLocation = extract('Original location');
+        const deliveryAction = extract('Delivery action');
+        const latestDeliveryLocation = extract('Latest delivery location');
+
+        const authMatch = rawData.match(/^(spf=pass.*)/im);
+        let authResults = 'N/A';
+        if (authMatch) {
+            authResults = authMatch[0].split(';').map(part => {
+                const trimmedPart = part.trim();
+                if (trimmedPart.startsWith('spf=') || trimmedPart.startsWith('dkim=')) {
+                    const closingParenIndex = trimmedPart.indexOf(')');
+                    if (closingParenIndex !== -1) {
+                        return trimmedPart.substring(0, closingParenIndex + 1);
+                    }
+                }
+                if (trimmedPart.startsWith('dmarc=')) {
+                    const dmarcMatch = trimmedPart.match(/^dmarc=\w+/);
+                    return dmarcMatch ? dmarcMatch[0] : trimmedPart;
+                }
+                return trimmedPart;
+            }).join('\n');
+        }
+
+        const jumbledLineMatch = rawData.match(/^(Country\/Region.*Protection Policy Category.*)/im);
+        const jumbledLine = jumbledLineMatch ? jumbledLineMatch[0] : '';
+        
+        const parseJumbledLine = (line, key, nextKey) => {
+            if (!line) return 'N/A';
+            const pattern = nextKey ? `${key}(.*?)(?=${nextKey})` : `${key}(.*)`;
+            const regex = new RegExp(pattern, 'i');
+            const match = line.match(regex);
+            return match ? match[1].trim() : 'N/A';
+        };
+
+        const country = parseJumbledLine(jumbledLine, 'Country/Region', 'Language');
+        const language = parseJumbledLine(jumbledLine, 'Language', 'Spam Confidence Level');
+        const scl = parseJumbledLine(jumbledLine, 'Spam Confidence Level', 'Spam Filtering Verdict');
+        const sfv = parseJumbledLine(jumbledLine, 'Spam Filtering Verdict', 'IP Filter Verdict');
+        const ipFilter = parseJumbledLine(jumbledLine, 'IP Filter Verdict', 'HELO/EHLO String');
+        const helo = parseJumbledLine(jumbledLine, 'HELO/EHLO String', 'PTR Record');
+        const ptr = parseJumbledLine(jumbledLine, 'PTR Record', 'Connecting IP Address');
+        const connectingIp = parseJumbledLine(jumbledLine, 'Connecting IP Address', 'Protection Policy Category');
+        const policyCategory = parseJumbledLine(jumbledLine, 'Protection Policy Category', null);
+
+        const unknownMatch = rawData.match(/Unknown fields\s*(.*);/im);
+        const unknownFields = unknownMatch ? unknownMatch[1].replace(':', ': ').trim() : 'N/A';
+        
+        const bclMatch = rawData.match(/Bulk Complaint Level(\d+)/im);
+        const bcl = bclMatch ? bclMatch[1].trim() : 'N/A';
+        
+        let senderDomain = 'N/A';
+        try {
+            senderDomain = new URL('http://' + senderAddress.split('@')[1]).hostname;
+        } catch (e) {
+            senderDomain = senderAddress.split('@')[1] || 'N/A';
+        }
+
+        // --- FINAL FORMATTED TEXT WITH UNIVERSAL DEFANGING ---
+        const formattedText = `Analysis:
+We have observed that "${defang(recipient)}" has received a mail from "${defang(senderMailFrom)}" having subject line "${subject}"
+
+Email Header Details:
+Subject Line: ${subject}
+Sender Address: ${defang(senderAddress)}
+Sender Mail from Address: ${defang(senderMailFrom)}
+Sender IP: ${defang(senderIp)}
+Recipient(s): ${defang(recipient)}
+Time Received: ${timeReceived}
+Directionality: ${directionality}
+Network Message ID: ${networkMessageId}
+Internet Message ID: ${defang(internetMessageId)}
+
+Delivery Details:
+Original location: ${originalLocation}
+Delivery action: ${deliveryAction}
+Latest delivery location: ${latestDeliveryLocation}
+
+Authentication-Results:
+${defang(authResults)}
+
+Additional Details:
+Country/Region - ${country}
+Language - ${language}
+Spam Confidence Level - ${scl}
+Spam Filtering Verdict - ${sfv}
+IP Filter Verdict - ${ipFilter}
+HELO/EHLO String - ${defang(helo)}
+PTR Record - ${defang(ptr)}
+Connecting IP Address - ${defang(connectingIp)}
+Protection Policy Category - ${policyCategory}
+Unknown fields - ${unknownFields}
+Bulk Complaint Level: ${bcl}
+
+Reputation of Sender IP – ${defang(senderIp)}
+ISP: [Please check and fill] | Location: [Please check and fill]
+IPVoid : [Please check and fill]
+VirusTotal : [Please check and fill]
+AbuseIPDB: [Please check and fill]
+
+Reputation of Domain - ${defang(senderDomain)} - [Please check registration age]
+Virustotal: [Please check and fill]
+UrlVoid : [Please check and fill]
+Symantec category: [Please check and fill]
+
+URLs Observed:
+Total URLs :
+[Please list URLs here]
+
+Attachments Observed:
+[Please list attachments here, or state "No attachments."]
+
+Observation:
+[Please add your final observation here.]
+`;
+        outputArea.value = formattedText;
+    });
+
+    document.getElementById('copyButton').addEventListener('click', function() {
+        const outputArea = document.getElementById('formattedOutput');
+        outputArea.select();
+        outputArea.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(outputArea.value).then(() => {
+            const originalText = this.textContent;
+            this.textContent = 'Copied!';
+            setTimeout(() => { this.textContent = originalText; }, 1500);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert('Failed to copy text.');
+        });
+    });
+</script>
+
+</body>
+</html>
