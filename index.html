@@ -109,30 +109,64 @@
         const rawData = document.getElementById('rawDataInput').value;
         const outputArea = document.getElementById('formattedOutput');
 
-        // --- Helper Functions ---
-        const defang = (str) => {
-            if (typeof str !== 'string') return str;
-            return str.replace(/\./g, '[.]');
+        // --- Universal Helper Function to Extract Values ---
+        const getValue = (key) => {
+            // Method 1: Key on its own line, value on the next (common in both formats)
+            let match = rawData.match(new RegExp(`^${key}\\s*\\n([^\\n]+)`, 'im'));
+            if (match) return match[1].trim();
+
+            // Method 2: Key and value on the same line (for new format)
+            match = rawData.match(new RegExp(`^${key}\\s+([^\\n]+)`, 'im'));
+            if (match) return match[1].trim();
+
+            // Method 3: Fallback for old "jumbled line" format
+            const jumbledLineMatch = rawData.match(/^(Country\/Region[A-Z]{2}Language.*)/im);
+            if (jumbledLineMatch) {
+                const jumbledLine = jumbledLineMatch[0];
+                const keySequence = ['Country/Region', 'Language', 'Spam Confidence Level', 'Spam Filtering Verdict', 'IP Filter Verdict', 'HELO/EHLO String', 'PTR Record', 'Connecting IP Address', 'Protection Policy Category'];
+                const currentIndex = keySequence.findIndex(k => key.toLowerCase() === k.toLowerCase());
+
+                if (currentIndex !== -1) {
+                    const currentKey = keySequence[currentIndex];
+                    const nextKey = keySequence[currentIndex + 1];
+                    const pattern = nextKey ? `${currentKey}(.*?)(?=${nextKey})` : `${currentKey}(.*)`;
+                    match = jumbledLine.match(new RegExp(pattern, 'i'));
+                    if (match) return match[1].trim();
+                }
+            }
+
+            return 'N/A'; // Return N/A if no method works
         };
 
-        const extract = (key) => {
-            const regex = new RegExp(`^${key}\\s*\\n([^\\n]+)`, 'im');
-            const match = rawData.match(regex);
-            return match ? match[1].trim() : 'N/A';
-        };
+        // --- Data Extraction using the universal helper ---
+        // Updated subject regex to handle both formats (with or without colon)
+        const subject = rawData.match(/^Subject\s*:?\s*(.*)/im)?.[1].trim().replace(/'/g, '') || 'N/A';
+        
+        const recipient = getValue('Recipient\\(s\\)');
+        const senderMailFrom = getValue('Sender mail from address');
+        const senderAddress = getValue('Sender address');
+        const senderIp = getValue('Sender IP');
+        const timeReceived = getValue('Time received \\(UTC \\+05:30\\)');
+        const directionality = getValue('Directionality');
+        const networkMessageId = getValue('Network message ID');
+        const internetMessageId = getValue('Internet message ID');
+        const originalLocation = getValue('Original location');
+        const deliveryAction = getValue('Delivery action');
+        const latestDeliveryLocation = getValue('Latest delivery location');
 
-        const subject = rawData.match(/^Subject\s*:(.*)/im)?.[1].trim() || 'N/A';
-        const recipient = extract('Recipient\\(s\\)');
-        const senderMailFrom = extract('Sender mail from address');
-        const senderAddress = extract('Sender address');
-        const senderIp = extract('Sender IP');
-        const timeReceived = extract('Time received \\(UTC \\+05:30\\)');
-        const directionality = extract('Directionality');
-        const networkMessageId = extract('Network message ID');
-        const internetMessageId = extract('Internet message ID');
-        const originalLocation = extract('Original location');
-        const deliveryAction = extract('Delivery action');
-        const latestDeliveryLocation = extract('Latest delivery location');
+        const country = getValue('Country/Region');
+        const language = getValue('Language');
+        const scl = getValue('Spam Confidence Level');
+        const sfv = getValue('Spam Filtering Verdict');
+        const ipFilter = getValue('IP Filter Verdict');
+        const helo = getValue('HELO/EHLO String');
+        const ptr = getValue('PTR Record');
+        const connectingIp = getValue('Connecting IP Address');
+        const policyCategory = getValue('Protection Policy Category');
+        const bcl = getValue('Bulk Complaint Level');
+
+        const unknownMatch = rawData.match(/Unknown fields\s*(.*);/im);
+        const unknownFields = unknownMatch ? unknownMatch[1].replace(':', ': ').trim() : 'N/A';
 
         const authMatch = rawData.match(/^(spf=pass.*)/im);
         let authResults = 'N/A';
@@ -141,9 +175,7 @@
                 const trimmedPart = part.trim();
                 if (trimmedPart.startsWith('spf=') || trimmedPart.startsWith('dkim=')) {
                     const closingParenIndex = trimmedPart.indexOf(')');
-                    if (closingParenIndex !== -1) {
-                        return trimmedPart.substring(0, closingParenIndex + 1);
-                    }
+                    if (closingParenIndex !== -1) return trimmedPart.substring(0, closingParenIndex + 1);
                 }
                 if (trimmedPart.startsWith('dmarc=')) {
                     const dmarcMatch = trimmedPart.match(/^dmarc=\w+/);
@@ -153,32 +185,7 @@
             }).join('\n');
         }
 
-        const jumbledLineMatch = rawData.match(/^(Country\/Region.*Protection Policy Category.*)/im);
-        const jumbledLine = jumbledLineMatch ? jumbledLineMatch[0] : '';
-        
-        const parseJumbledLine = (line, key, nextKey) => {
-            if (!line) return 'N/A';
-            const pattern = nextKey ? `${key}(.*?)(?=${nextKey})` : `${key}(.*)`;
-            const regex = new RegExp(pattern, 'i');
-            const match = line.match(regex);
-            return match ? match[1].trim() : 'N/A';
-        };
-
-        const country = parseJumbledLine(jumbledLine, 'Country/Region', 'Language');
-        const language = parseJumbledLine(jumbledLine, 'Language', 'Spam Confidence Level');
-        const scl = parseJumbledLine(jumbledLine, 'Spam Confidence Level', 'Spam Filtering Verdict');
-        const sfv = parseJumbledLine(jumbledLine, 'Spam Filtering Verdict', 'IP Filter Verdict');
-        const ipFilter = parseJumbledLine(jumbledLine, 'IP Filter Verdict', 'HELO/EHLO String');
-        const helo = parseJumbledLine(jumbledLine, 'HELO/EHLO String', 'PTR Record');
-        const ptr = parseJumbledLine(jumbledLine, 'PTR Record', 'Connecting IP Address');
-        const connectingIp = parseJumbledLine(jumbledLine, 'Connecting IP Address', 'Protection Policy Category');
-        const policyCategory = parseJumbledLine(jumbledLine, 'Protection Policy Category', null);
-
-        const unknownMatch = rawData.match(/Unknown fields\s*(.*);/im);
-        const unknownFields = unknownMatch ? unknownMatch[1].replace(':', ': ').trim() : 'N/A';
-        
-        const bclMatch = rawData.match(/Bulk Complaint Level(\d+)/im);
-        const bcl = bclMatch ? bclMatch[1].trim() : 'N/A';
+        const defang = (str) => (typeof str === 'string' ? str.replace(/\./g, '[.]') : str);
         
         let senderDomain = 'N/A';
         try {
@@ -187,7 +194,7 @@
             senderDomain = senderAddress.split('@')[1] || 'N/A';
         }
 
-        // --- FINAL FORMATTED TEXT WITH UNIVERSAL DEFANGING ---
+        // --- Final Formatted Text (Structure remains the same) ---
         const formattedText = `Analysis:
 We have observed that "${defang(recipient)}" has received a mail from "${defang(senderMailFrom)}" having subject line "${subject}"
 
@@ -235,7 +242,6 @@ UrlVoid : [Please check and fill]
 Symantec category: [Please check and fill]
 
 URLs Observed:
-Total URLs :
 [Please list URLs here]
 
 Attachments Observed:
