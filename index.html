@@ -111,11 +111,11 @@
 
         // --- Universal Helper Function to Extract Values ---
         const getValue = (key) => {
-            // Method 1: Key on its own line, value on the next (common in both formats)
+            // Method 1: Key on its own line, value on the next (common in all formats)
             let match = rawData.match(new RegExp(`^${key}\\s*\\n([^\\n]+)`, 'im'));
             if (match) return match[1].trim();
 
-            // Method 2: Key and value on the same line (for new format)
+            // Method 2: Key and value on the same line (for newer formats)
             match = rawData.match(new RegExp(`^${key}\\s+([^\\n]+)`, 'im'));
             if (match) return match[1].trim();
 
@@ -124,7 +124,7 @@
             if (jumbledLineMatch) {
                 const jumbledLine = jumbledLineMatch[0];
                 const keySequence = ['Country/Region', 'Language', 'Spam Confidence Level', 'Spam Filtering Verdict', 'IP Filter Verdict', 'HELO/EHLO String', 'PTR Record', 'Connecting IP Address', 'Protection Policy Category'];
-                const currentIndex = keySequence.findIndex(k => key.toLowerCase() === k.toLowerCase());
+                const currentIndex = keySequence.findIndex(k => new RegExp(k, 'i').test(key));
 
                 if (currentIndex !== -1) {
                     const currentKey = keySequence[currentIndex];
@@ -139,8 +139,9 @@
         };
 
         // --- Data Extraction using the universal helper ---
-        // Updated subject regex to handle both formats (with or without colon)
-        const subject = rawData.match(/^Subject\s*:?\s*(.*)/im)?.[1].trim().replace(/'/g, '') || 'N/A';
+        // **UPDATED** regex for single and multi-line subjects. It captures everything from "Subject" until "Delivery details".
+        const subjectMatch = rawData.match(/^Subject\s*:?\s*([\s\S]*?)(?=Delivery details)/im);
+        const subject = subjectMatch ? subjectMatch[1].trim().replace(/'/g, '').replace(/\n/g, ' ') : 'N/A';
         
         const recipient = getValue('Recipient\\(s\\)');
         const senderMailFrom = getValue('Sender mail from address');
@@ -168,7 +169,7 @@
         const unknownMatch = rawData.match(/Unknown fields\s*(.*);/im);
         const unknownFields = unknownMatch ? unknownMatch[1].replace(':', ': ').trim() : 'N/A';
 
-        const authMatch = rawData.match(/^(spf=pass.*)/im);
+        const authMatch = rawData.match(/^(spf=\w+.*)/im);
         let authResults = 'N/A';
         if (authMatch) {
             authResults = authMatch[0].split(';').map(part => {
@@ -188,10 +189,8 @@
         const defang = (str) => (typeof str === 'string' ? str.replace(/\./g, '[.]') : str);
         
         let senderDomain = 'N/A';
-        try {
-            senderDomain = new URL('http://' + senderAddress.split('@')[1]).hostname;
-        } catch (e) {
-            senderDomain = senderAddress.split('@')[1] || 'N/A';
+        if (senderAddress !== 'N/A' && senderAddress.includes('@')) {
+            senderDomain = senderAddress.split('@')[1];
         }
 
         // --- Final Formatted Text (Structure remains the same) ---
