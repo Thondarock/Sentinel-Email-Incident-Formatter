@@ -109,40 +109,37 @@
         const rawData = document.getElementById('rawDataInput').value;
         const outputArea = document.getElementById('formattedOutput');
 
-        // --- Universal Helper Function to Extract Values ---
         const getValue = (key) => {
-            // Method 1: Key on its own line, value on the next (common in all formats)
             let match = rawData.match(new RegExp(`^${key}\\s*\\n([^\\n]+)`, 'im'));
             if (match) return match[1].trim();
-
-            // Method 2: Key and value on the same line (for newer formats)
             match = rawData.match(new RegExp(`^${key}\\s+([^\\n]+)`, 'im'));
             if (match) return match[1].trim();
-
-            // Method 3: Fallback for old "jumbled line" format
-            const jumbledLineMatch = rawData.match(/^(Country\/Region[A-Z]{2}Language.*)/im);
-            if (jumbledLineMatch) {
-                const jumbledLine = jumbledLineMatch[0];
-                const keySequence = ['Country/Region', 'Language', 'Spam Confidence Level', 'Spam Filtering Verdict', 'IP Filter Verdict', 'HELO/EHLO String', 'PTR Record', 'Connecting IP Address', 'Protection Policy Category'];
-                const currentIndex = keySequence.findIndex(k => new RegExp(k, 'i').test(key));
-
-                if (currentIndex !== -1) {
-                    const currentKey = keySequence[currentIndex];
-                    const nextKey = keySequence[currentIndex + 1];
-                    const pattern = nextKey ? `${currentKey}(.*?)(?=${nextKey})` : `${currentKey}(.*)`;
-                    match = jumbledLine.match(new RegExp(pattern, 'i'));
-                    if (match) return match[1].trim();
-                }
-            }
-
-            return 'N/A'; // Return N/A if no method works
+            return 'N/A';
         };
 
-        // --- Data Extraction using the universal helper ---
-        // **UPDATED** regex for single and multi-line subjects. It captures everything from "Subject" until "Delivery details".
-        const subjectMatch = rawData.match(/^Subject\s*:?\s*([\s\S]*?)(?=Delivery details)/im);
-        const subject = subjectMatch ? subjectMatch[1].trim().replace(/'/g, '').replace(/\n/g, ' ') : 'N/A';
-        
+        // --- Advanced Subject & Attachment/Link Parsing ---
+        let subject = 'N/A';
+        let attachmentCount = '[Please check and fill]';
+        let linkCount = '[Please check and fill]';
+
+        const emailHeaderMatch = rawData.match(/^(Email|email)\s*\d*\s*\n([\s\S]*?)(?=Delivery details)/im);
+        if (emailHeaderMatch) {
+            const content = emailHeaderMatch[2].trim().split('\n');
+            subject = content[0].trim();
+            if (content.length > 1) {
+                const countLineMatch = content[1].match(/(\d+)\s*Attachments\s*(\d+)\s*Links/i);
+                if (countLineMatch) {
+                    attachmentCount = countLineMatch[1] || '0';
+                    linkCount = countLineMatch[2] || '0';
+                }
+            }
+        } else {
+             const subjectMatch = rawData.match(/^Subject\s*:?\s*([\s\S]*?)(?=Delivery details)/im);
+             subject = subjectMatch ? subjectMatch[1].trim().replace(/\n/g, ' ') : 'N/A';
+        }
+
+        // --- Data Extraction ---
+        const replyTo = getValue('Return path'); // Automatically extract Reply To field
         const recipient = getValue('Recipient\\(s\\)');
         const senderMailFrom = getValue('Sender mail from address');
         const senderAddress = getValue('Sender address');
@@ -165,24 +162,24 @@
         const connectingIp = getValue('Connecting IP Address');
         const policyCategory = getValue('Protection Policy Category');
         const bcl = getValue('Bulk Complaint Level');
+        
+        const unknownFields = rawData.match(/Unknown fields\s*(.*);/im)?.[1].replace(':', ': ').trim() || 'N/A';
 
-        const unknownMatch = rawData.match(/Unknown fields\s*(.*);/im);
-        const unknownFields = unknownMatch ? unknownMatch[1].replace(':', ': ').trim() : 'N/A';
-
-        const authMatch = rawData.match(/^(spf=\w+.*)/im);
+        const authLines = rawData.match(/^(.*\b(spf|dkim|dmarc)=.*)/img);
         let authResults = 'N/A';
-        if (authMatch) {
-            authResults = authMatch[0].split(';').map(part => {
-                const trimmedPart = part.trim();
-                if (trimmedPart.startsWith('spf=') || trimmedPart.startsWith('dkim=')) {
-                    const closingParenIndex = trimmedPart.indexOf(')');
-                    if (closingParenIndex !== -1) return trimmedPart.substring(0, closingParenIndex + 1);
-                }
-                if (trimmedPart.startsWith('dmarc=')) {
-                    const dmarcMatch = trimmedPart.match(/^dmarc=\w+/);
-                    return dmarcMatch ? dmarcMatch[0] : trimmedPart;
-                }
-                return trimmedPart;
+        if (authLines) {
+            authResults = authLines.map(line => {
+                return line.split(';').map(part => {
+                    const trimmed = part.trim();
+                    if (trimmed.startsWith('spf=') || trimmed.startsWith('dkim=')) {
+                        const match = trimmed.match(/^.*?\)/);
+                        return match ? match[0] : trimmed;
+                    }
+                    if (trimmed.startsWith('dmarc=')) {
+                        return trimmed.split(' ')[0];
+                    }
+                    return trimmed;
+                }).join('\n');
             }).join('\n');
         }
 
@@ -193,7 +190,6 @@
             senderDomain = senderAddress.split('@')[1];
         }
 
-        // --- Final Formatted Text (Structure remains the same) ---
         const formattedText = `Analysis:
 We have observed that "${defang(recipient)}" has received a mail from "${defang(senderMailFrom)}" having subject line "${subject}"
 
@@ -201,6 +197,7 @@ Email Header Details:
 Subject Line: ${subject}
 Sender Address: ${defang(senderAddress)}
 Sender Mail from Address: ${defang(senderMailFrom)}
+Reply To: ${defang(replyTo)}
 Sender IP: ${defang(senderIp)}
 Recipient(s): ${defang(recipient)}
 Time Received: ${timeReceived}
@@ -241,10 +238,12 @@ UrlVoid : [Please check and fill]
 Symantec category: [Please check and fill]
 
 URLs Observed:
-[Please list URLs here]
+Total URL's: ${linkCount}
+Url Details: [Please paste URL details here]
 
 Attachments Observed:
-[Please list attachments here, or state "No attachments."]
+Total Attachments: ${attachmentCount}
+Attachment Details: [Please paste attachment details here]
 
 Observation:
 [Please add your final observation here.]
