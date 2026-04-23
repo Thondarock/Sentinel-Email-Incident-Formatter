@@ -1,342 +1,920 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sentinel Email Incident Formatter</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f2f5;
-            color: #1c1e21;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1400px;
-            margin: auto;
-            background: #fff;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #0d2c6c;
-            text-align: center;
-            margin-bottom: 25px;
-        }
-        .incident-details {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        .input-group {
-            flex: 1;
-        }
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #606770;
-        }
-        .input-group input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #dddfe2;
-            border-radius: 6px;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-        .text-areas {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-        .box {
-            flex: 1;
-            min-width: 300px;
-            position: relative; /* Needed for copy button */
-        }
-        textarea {
-            width: 100%;
-            padding: 15px;
-            border: 1px solid #dddfe2;
-            border-radius: 6px;
-            font-size: 14px;
-            font-family: "Courier New", Courier, monospace;
-            box-sizing: border-box;
-            resize: vertical;
-        }
-        textarea:focus {
-            outline: none;
-            border-color: #1877f2;
-            box-shadow: 0 0 0 2px #e7f3ff;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #606770;
-        }
-        .button-container {
-            text-align: center;
-            margin-top: 20px;
-        }
-        button {
-            background-color: #1877f2;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        button:hover {
-            background-color: #166fe5;
-        }
-        .copy-button { /* Style for copy buttons on text boxes */
-            position: absolute;
-            top: 40px; /* Adjust as needed */
-            right: 10px;
-            padding: 5px 10px;
-            font-size: 12px;
-            background-color: #42b72a;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .copy-button:hover {
-            background-color: #36a420;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel Email Incident Formatter</title>
+<style>
+/* ── THEME TOKENS ────────────────────────────────────────────── */
+:root[data-theme="dark"] {
+  --bg:#0f1117; --surface:#181c27; --surface2:#1e2333; --surface3:#252b40;
+  --border:#2a3048; --border2:#3a4460;
+  --accent:#3b7ef8; --accent2:#2563d4; --accent-glow:rgba(59,126,248,.18);
+  --text:#e8eaf2; --text2:#8b93b0; --text3:#5a6380;
+  --green:#22c55e; --red:#ef4444; --yellow:#f59e0b; --purple:#a855f7;
+  --ai-bg:#13111e; --ai-border:#3d2f6e; --ai-accent:#a855f7; --ai-accent2:#7c3aed;
+  --ai-glow:rgba(168,85,247,.15);
+  --scrollbar:#3a4460;
+}
+:root[data-theme="light"] {
+  --bg:#f0f2f8; --surface:#ffffff; --surface2:#f4f6fb; --surface3:#eaecf4;
+  --border:#d1d8e8; --border2:#b8c2d8;
+  --accent:#2563eb; --accent2:#1d4ed8; --accent-glow:rgba(37,99,235,.12);
+  --text:#1a1f36; --text2:#4a5378; --text3:#8890aa;
+  --green:#16a34a; --red:#dc2626; --yellow:#d97706; --purple:#7c3aed;
+  --ai-bg:#faf7ff; --ai-border:#c4b5f4; --ai-accent:#7c3aed; --ai-accent2:#6d28d9;
+  --ai-glow:rgba(124,58,237,.1);
+  --scrollbar:#c0c8dc;
+}
+
+/* ── RESET ───────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.6;min-height:100vh;transition:background .2s,color .2s}
+
+/* ── LAYOUT ──────────────────────────────────────────────────── */
+.app{display:grid;grid-template-columns:220px 1fr;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-icon svg{width:16px;height:16px;stroke:#fff;fill:none}
+.topbar h1{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.01em;white-space:nowrap}
+.topbar .badge{font-size:10px;padding:2px 8px;background:var(--accent);color:#fff;border-radius:20px;font-weight:600;margin-left:2px}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+/* theme toggle */
+.theme-btn{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--text2);transition:all .15s}
+.theme-btn:hover{background:var(--surface3);color:var(--text)}
+.theme-btn svg{width:14px;height:14px}
+
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px 0;overflow-y:auto;transition:background .2s}
+.sidebar-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:0 16px 8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;color:var(--text2);font-size:13px;border-left:3px solid transparent;transition:all .15s;user-select:none}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-glow);color:var(--accent);border-left-color:var(--accent);font-weight:500}
+.nav-item svg{width:15px;height:15px;flex-shrink:0}
+.nav-divider{border-top:1px solid var(--border);margin:8px 0}
+/* AI nav special */
+.nav-item.nav-ai{color:var(--ai-accent)}
+.nav-item.nav-ai:hover{background:var(--ai-glow)}
+.nav-item.nav-ai.active{background:var(--ai-glow);color:var(--ai-accent);border-left-color:var(--ai-accent)}
+
+.main{overflow-y:auto;padding:24px;background:var(--bg);transition:background .2s}
+.panel{display:none}
+
+/* ── CARDS ───────────────────────────────────────────────────── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;transition:background .2s,border-color .2s}
+.card-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── FORM ────────────────────────────────────────────────────── */
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.field:last-child{margin-bottom:0}
+label{font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.02em}
+.hint{font-size:10px;color:var(--text3);margin-top:1px}
+input,textarea,select{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;padding:8px 10px;width:100%;resize:vertical;transition:border-color .15s,background .2s}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+select option{background:var(--surface2)}
+.mono{font-family:'Courier New',Courier,monospace;font-size:12px}
+textarea.tall{height:200px}
+textarea.medium{height:130px}
+textarea.output{height:560px}
+textarea.auth{height:90px}
+.sep{border:none;border-top:1px solid var(--border);margin:14px 0}
+
+/* ── BUTTONS ─────────────────────────────────────────────────── */
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.btn{font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;font-weight:500;padding:8px 18px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px}
+.btn:hover{background:var(--surface3)}
+.btn svg{width:14px;height:14px;flex-shrink:0}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2);border-color:var(--accent2)}
+.btn-green{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:var(--green)}
+.btn-green:hover{background:rgba(34,197,94,.22)}
+.btn-ai{background:var(--ai-glow);border-color:var(--ai-border);color:var(--ai-accent)}
+.btn-ai:hover{background:rgba(168,85,247,.22)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ── CHIPS ───────────────────────────────────────────────────── */
+.chip{font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
+.chip-ok{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.chip-err{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.chip-warn{background:rgba(245,158,11,.12);color:var(--yellow);border:1px solid rgba(245,158,11,.3)}
+.chip-neu{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+
+/* ── PREVIEW ─────────────────────────────────────────────────── */
+.prev-grid{display:grid;grid-template-columns:170px 1fr;gap:2px 12px;font-size:12px}
+.prev-grid .k{color:var(--text3);font-weight:600;padding:3px 0;font-size:11px}
+.prev-grid .v{color:var(--text);padding:3px 0;word-break:break-all}
+.auth-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+
+/* ── AI SECTION ──────────────────────────────────────────────── */
+.ai-card{background:var(--ai-bg);border:1px solid var(--ai-border);border-radius:12px;padding:20px;margin-bottom:16px;transition:background .2s,border-color .2s}
+.ai-card-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ai-accent);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.ai-card-title::after{content:'';flex:1;height:1px;background:var(--ai-border)}
+.ai-card-title svg{width:14px;height:14px}
+.ai-model-badge{font-size:10px;padding:2px 8px;background:var(--ai-glow);color:var(--ai-accent);border:1px solid var(--ai-border);border-radius:20px;font-weight:600}
+.ai-response-box{background:var(--surface2);border:1px solid var(--ai-border);border-radius:10px;padding:16px;min-height:140px;font-size:13px;line-height:1.7;color:var(--text);white-space:pre-wrap;word-break:break-word;transition:background .2s}
+.ai-response-box.loading{color:var(--text3);font-style:italic}
+.ai-response-box.error{color:var(--red);border-color:rgba(239,68,68,.4)}
+.ai-domain-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+.ai-domain-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.ai-domain-card .dc-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.ai-domain-card .dc-val{font-size:13px;color:var(--text);font-family:'Courier New',monospace;word-break:break-all}
+.ai-auth-summary{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:14px}
+.ai-auth-summary span.label{font-size:11px;color:var(--text3);margin-right:4px}
+.pulse{display:inline-flex;gap:4px;align-items:center}
+.pulse span{width:7px;height:7px;border-radius:50%;background:var(--ai-accent);animation:pulse 1.2s ease-in-out infinite}
+.pulse span:nth-child(2){animation-delay:.2s}
+.pulse span:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+.api-key-row{display:flex;gap:8px;align-items:flex-end}
+.api-key-row input{flex:1}
+.api-key-row .btn{flex-shrink:0;white-space:nowrap}
+.eye-btn{background:none;border:none;cursor:pointer;color:var(--text3);padding:0 2px;display:flex;align-items:center}
+.eye-btn:hover{color:var(--text)}
+.api-key-wrap{position:relative;flex:1}
+.api-key-wrap input{padding-right:36px}
+.api-key-wrap .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%)}
+
+/* ── SCROLLBAR ───────────────────────────────────────────────── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:3px}
+
+/* ── MOBILE ──────────────────────────────────────────────────── */
+@media(max-width:768px){
+  .app{grid-template-columns:1fr;grid-template-rows:56px auto 1fr}
+  .sidebar{grid-row:2;border-right:none;border-bottom:1px solid var(--border);padding:6px 0;display:flex;overflow-x:auto}
+  .sidebar-label,.nav-divider{display:none}
+  .nav-item{border-left:none;border-bottom:3px solid transparent;white-space:nowrap;padding:8px 12px}
+  .nav-item.active{border-bottom-color:var(--accent);border-left-color:transparent}
+  .nav-item.nav-ai.active{border-bottom-color:var(--ai-accent)}
+  .row2,.row3,.ai-domain-row{grid-template-columns:1fr}
+  .topbar h1{font-size:13px}
+}
+</style>
 </head>
 <body>
+<div class="app">
 
-<div class="container">
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
     <h1>Sentinel Email Incident Formatter</h1>
-
-    <div class="incident-details">
-        <div class="input-group">
-            <label for="incidentId">Incident ID:</label>
-            <input type="text" id="incidentId" placeholder="e.g., 8755">
-        </div>
-        <div class="input-group">
-            <label for="creationTime">Creation Time:</label>
-            <input type="text" id="creationTime" placeholder="e.g., 11/12/2025, 10:19:25 PM">
-        </div>
-    </div>
-
-    <div class="text-areas">
-        <div class="box">
-            <label for="rawDataInput">1. Paste Raw Data Here</label>
-            <textarea id="rawDataInput" style="height: 500px;" placeholder="Paste the raw email data from Sentinel..."></textarea>
-        </div>
-        <div class="box">
-            <label for="incidentDescriptionOutput">Incident Description (for Ticket)</label>
-            <textarea id="incidentDescriptionOutput" readonly style="height: 200px; margin-bottom: 20px;" placeholder="Your incident description will appear here..."></textarea>
-            <button class="copy-button" style="top: 40px;" onclick="copyText('incidentDescriptionOutput')">Copy</button>
-            
-            <label for="technicalAnalysisOutput">Technical Analysis</label>
-            <textarea id="technicalAnalysisOutput" readonly style="height: 500px;" placeholder="Your technical analysis will appear here..."></textarea>
-            <button class="copy-button" style="top: 268px;" onclick="copyText('technicalAnalysisOutput')">Copy</button>
-        </div>
-    </div>
-    <div class="button-container">
-        <button id="formatButton">Format Incident Data</button>
-    </div>
+    <span class="badge">SOC L1</span>
+  </div>
+  <div class="topbar-right">
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <span id="themeLabel">Light Mode</span>
+    </button>
+  </div>
 </div>
 
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-label">Workflow</div>
+  <div class="nav-item active" onclick="sw('raw')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>
+    Raw Input
+  </div>
+  <div class="nav-item" onclick="sw('fields')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Fields
+  </div>
+  <div class="nav-item" onclick="sw('prev')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    Preview
+  </div>
+  <div class="nav-item" onclick="sw('out')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    Output
+  </div>
+  <div class="nav-divider"></div>
+  <div class="sidebar-label">AI Engine</div>
+  <div class="nav-item nav-ai" onclick="sw('ai')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><circle cx="19" cy="5" r="3"/></svg>
+    AI Analysis
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- RAW INPUT -->
+<div id="tab-raw" class="panel" style="display:block">
+  <div class="card">
+    <div class="card-title">Incident Info</div>
+    <div class="row3">
+      <div class="field"><label>Incident ID</label><input id="incidentId" placeholder="e.g. 8755"></div>
+      <div class="field"><label>Creation Time</label><input id="creationTime" placeholder="e.g. 11/12/2025, 10:19:25 PM"></div>
+      <div class="field"><label>Priority</label>
+        <select id="priority"><option>P3</option><option>P1</option><option>P2</option><option>P4</option></select>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Email Header (full raw)</div>
+    <div class="field">
+      <textarea id="rawHeader" class="mono tall" placeholder="Paste full raw email header — Received:, Authentication-Results:, From:, To:, Subject:, Return-Path:, Reply-To:, X-Forefront-Antispam-Report:, X-MS-Exchange-* etc."></textarea>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Delivery Details Block</div>
+    <div class="field">
+      <textarea id="rawDelivery" class="mono medium" placeholder="Paste Delivery details block — Original location, Delivery action, Latest delivery location etc."></textarea>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="parseAll()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      Parse Raw Data
+    </button>
+    <button class="btn" onclick="clearAll()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      Clear All
+    </button>
+  </div>
+</div>
+
+<!-- FIELDS -->
+<div id="tab-fields" class="panel">
+  <div class="card">
+    <div class="card-title">Attachments &amp; URLs</div>
+    <div class="row2">
+      <div class="field"><label>Attachment Count</label><input id="attachCount" placeholder="0 or No Attachments"></div>
+      <div class="field"><label>Link / URL Count</label><input id="linkCount" placeholder="0"></div>
+    </div>
+    <div class="field"><label>URL Details</label><textarea id="urlDetails" style="height:60px" placeholder="[Please paste URL details here]"></textarea></div>
+    <div class="field"><label>Attachment Details</label><textarea id="attachDetails" style="height:50px" placeholder="[Please paste attachment details here]"></textarea></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Email Header Fields</div>
+    <div class="row2">
+      <div class="field"><label>Subject</label><input id="f_subject"></div>
+      <div class="field"><label>Sender Address</label><input id="f_senderAddr"><span class="hint">From: header</span></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Reply To</label><input id="f_replyTo"><span class="hint">Return-Path: header</span></div>
+      <div class="field"><label>Sender Mail from Address</label><input id="f_senderMailFrom"><span class="hint">Return-Path: header</span></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Sender IP</label><input id="f_senderIp"></div>
+      <div class="field"><label>Recipient(s)</label><input id="f_recipient"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Time Received</label><input id="f_timeReceived"></div>
+      <div class="field"><label>Directionality</label><input id="f_directionality"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Network Message ID</label><input id="f_networkMsgId"></div>
+      <div class="field"><label>Internet Message ID</label><input id="f_internetMsgId"></div>
+    </div>
+    <hr class="sep">
+    <div class="card-title" style="margin-bottom:14px">Delivery Details</div>
+    <div class="row2">
+      <div class="field"><label>Original Location</label><input id="f_origLoc"></div>
+      <div class="field"><label>Delivery Action</label><input id="f_deliveryAct"></div>
+    </div>
+    <div class="field"><label>Latest Delivery Location</label><input id="f_latestLoc"></div>
+    <hr class="sep">
+    <div class="field"><label>Authentication Results</label><textarea id="f_authResults" class="mono auth"></textarea></div>
+    <hr class="sep">
+    <div class="card-title" style="margin-bottom:14px">Additional Details</div>
+    <div class="row3">
+      <div class="field"><label>Country/Region</label><input id="f_country"></div>
+      <div class="field"><label>Language</label><input id="f_lang"></div>
+      <div class="field"><label>SCL</label><input id="f_scl"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Spam Filtering Verdict</label><input id="f_sfv"></div>
+      <div class="field"><label>IP Filter Verdict</label><input id="f_ipf"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>HELO/EHLO String</label><input id="f_helo"></div>
+      <div class="field"><label>PTR Record</label><input id="f_ptr"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Connecting IP Address</label><input id="f_connectIp"></div>
+      <div class="field"><label>Protection Policy Category</label><input id="f_policycat"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Unknown Fields</label><input id="f_unknown"></div>
+      <div class="field"><label>Bulk Complaint Level (BCL)</label><input id="f_bcl"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PREVIEW -->
+<div id="tab-prev" class="panel">
+  <div class="card" id="previewCard">
+    <div class="card-title">Parsed Preview</div>
+    <p style="color:var(--text3);font-size:13px">Parse raw data first to see preview.</p>
+  </div>
+</div>
+
+<!-- OUTPUT -->
+<div id="tab-out" class="panel">
+  <div class="card">
+    <div class="card-title">Formatted Output</div>
+    <textarea id="formattedOut" class="mono output" readonly></textarea>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="genOutput()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Generate Output
+      </button>
+      <button class="btn btn-green" onclick="copyOut()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy to Clipboard
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- AI ANALYSIS -->
+<div id="tab-ai" class="panel">
+
+  <!-- API Key config -->
+  <div class="ai-card">
+    <div class="ai-card-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="15" r="4"/><line x1="10.85" y1="12.15" x2="19" y2="4"/><line x1="18" y1="5" x2="20" y2="7"/><line x1="15" y1="8" x2="17" y2="10"/></svg>
+      AI Engine Configuration
+      <span class="ai-model-badge" id="modelBadge">Claude claude-sonnet-4-20250514</span>
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>AI Provider</label>
+      <select id="aiProvider" onchange="onProviderChange()">
+        <option value="claude">Anthropic — Claude claude-sonnet-4-20250514</option>
+        <option value="gemini">Google — Gemini 2.0 Flash</option>
+        <option value="grok">Groq — llama-3.3-70b-versatile</option>
+      </select>
+    </div>
+    <div class="field">
+      <label id="apiKeyLabel">Anthropic API Key</label>
+      <div class="api-key-row">
+        <div class="api-key-wrap">
+          <input type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off">
+          <button class="eye-btn" onclick="toggleKey()" title="Show/hide key">
+            <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <button class="btn btn-ai" onclick="saveKey()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Key
+        </button>
+      </div>
+      <span class="hint" id="keyStatus">Key not saved. Enter your API key above — stored in memory only, never sent anywhere except the selected provider's API.</span>
+    </div>
+  </div>
+
+  <!-- Domain & Auth summary (auto-filled from parse) -->
+  <div class="ai-card">
+    <div class="ai-card-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      Domain &amp; Authentication Context
+    </div>
+    <div class="ai-domain-row">
+      <div class="ai-domain-card">
+        <div class="dc-label">Sender Domain</div>
+        <div class="dc-val" id="ai_senderDomain">—</div>
+      </div>
+      <div class="ai-domain-card">
+        <div class="dc-label">Mail From Domain</div>
+        <div class="dc-val" id="ai_mailFromDomain">—</div>
+      </div>
+      <div class="ai-domain-card">
+        <div class="dc-label">Reply-To Domain</div>
+        <div class="dc-val" id="ai_replyToDomain">—</div>
+      </div>
+    </div>
+    <div class="ai-auth-summary" id="ai_authSummary">
+      <span class="label">Auth:</span>
+      <span style="color:var(--text3);font-size:12px">Parse raw data first to populate auth results.</span>
+    </div>
+    <div class="row2" style="margin-top:12px;margin-bottom:0">
+      <div class="field" style="margin-bottom:0"><label>Sender IP</label><input id="ai_senderIp" placeholder="Auto-filled from parse" readonly style="opacity:.8"></div>
+      <div class="field" style="margin-bottom:0"><label>Subject Line</label><input id="ai_subject" placeholder="Auto-filled from parse" readonly style="opacity:.8"></div>
+    </div>
+  </div>
+
+  <!-- Additional context -->
+  <div class="ai-card">
+    <div class="ai-card-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Additional Context (optional)
+    </div>
+    <div class="field" style="margin-bottom:0">
+      <label>Extra notes / observed indicators</label>
+      <textarea id="ai_extraContext" style="height:70px" placeholder="e.g. User reported clicking a link, VirusTotal findings, attachment hashes, etc."></textarea>
+    </div>
+  </div>
+
+  <!-- Run AI -->
+  <div class="btn-row" style="margin-bottom:16px">
+    <button class="btn btn-ai" id="aiRunBtn" onclick="runAI()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Run AI Analysis
+    </button>
+    <button class="btn" onclick="clearAI()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      Clear Response
+    </button>
+  </div>
+
+  <!-- AI Response -->
+  <div class="ai-card">
+    <div class="ai-card-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><circle cx="19" cy="5" r="3"/></svg>
+      AI Analysis Response
+    </div>
+    <div id="aiResponse" class="ai-response-box">Waiting for analysis...</div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-green" id="copyAiBtn" onclick="copyAI()" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy AI Response
+      </button>
+      <button class="btn" id="appendAiBtn" onclick="appendAIToOutput()" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        Append to Output
+      </button>
+    </div>
+  </div>
+
+</div><!-- end tab-ai -->
+
+</div><!-- end .main -->
+</div><!-- end .app -->
+
 <script>
-    document.getElementById('formatButton').addEventListener('click', function() {
-        const rawData = document.getElementById('rawDataInput').value;
-        const incidentId = document.getElementById('incidentId').value || '[User need to fill]';
-        const creationTime = document.getElementById('creationTime').value || '[User need to fill]';
+/* ── TABS ──────────────────────────────────────────────────── */
+var TABS=['raw','fields','prev','out','ai'];
+function sw(name){
+  TABS.forEach(function(n,i){
+    var btn=document.querySelectorAll('.nav-item')[i];
+    var panel=document.getElementById('tab-'+n);
+    if(n===name){btn.classList.add('active');panel.style.display='block';}
+    else{btn.classList.remove('active');panel.style.display='none';}
+  });
+}
 
-        // --- Helper Functions ---
-        const getValue = (key) => {
-            let match = rawData.match(new RegExp(`^${key}\\s*\\n([^\\n]+)`, 'im'));
-            if (match) return match[1].trim();
-            match = rawData.match(new RegExp(`^${key}\\s+([^\\n]+)`, 'im'));
-            if (match) return match[1].trim();
-            return 'N/A';
-        };
+/* ── THEME ──────────────────────────────────────────────────── */
+function toggleTheme(){
+  var html=document.documentElement;
+  var isDark=html.getAttribute('data-theme')==='dark';
+  html.setAttribute('data-theme',isDark?'light':'dark');
+  document.getElementById('themeLabel').textContent=isDark?'Dark Mode':'Light Mode';
+  // swap icon: sun↔moon
+  var icon=document.getElementById('themeIcon');
+  if(isDark){
+    icon.innerHTML='<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+  } else {
+    icon.innerHTML='<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+  }
+}
 
-        const defang = (str) => (typeof str === 'string' ? str.replace(/\./g, '[.]') : str);
-        
-        const generateUserName = (email) => {
-            if (!email || email === 'N/A' || !email.includes('@')) return 'N/A';
-            const namePart = email.split('@')[0];
-            return namePart.split('.')
-                           .map(name => name.charAt(0).toUpperCase() + name.slice(1))
-                           .join(' ');
-        };
+/* ── API KEY & PROVIDER ──────────────────────────────────────── */
+var _apiKey='';
+var _provider='claude';
 
-        // --- Advanced Subject & Attachment/Link Parsing ---
-        let subject = 'N/A';
-        let attachmentCount = '[Please check and fill]';
-        let linkCount = '[Please check and fill]';
+var PROVIDER_META={
+  claude:{label:'Anthropic API Key',placeholder:'sk-ant-api03-...',badge:'Claude claude-sonnet-4-20250514'},
+  gemini:{label:'Google Gemini API Key',placeholder:'AIza...',badge:'Gemini 2.0 Flash'},
+  grok:{label:'Groq API Key',placeholder:'gsk_...',badge:'Groq — llama-3.3-70b-versatile'}
+};
 
-        const emailHeaderMatch = rawData.match(/^(Email|email)\s*\d*\s*\n([\s\S]*?)(?=Delivery details)/im);
-        if (emailHeaderMatch) {
-            const content = emailHeaderMatch[2].trim().split('\n');
-            subject = content[0].trim();
-            if (content.length > 1) {
-                const countLineMatch = content[1].match(/(\d+)\s*Attachments\s*(\d+)\s*Links/i);
-                if (countLineMatch) {
-                    attachmentCount = countLineMatch[1] || '0';
-                    linkCount = countLineMatch[2] || '0';
-                }
-            }
-        } else {
-             const subjectMatch = rawData.match(/^Subject\s*:?\s*([\s\S]*?)(?=Delivery details)/im);
-             subject = subjectMatch ? subjectMatch[1].trim().replace(/\n/g, ' ') : 'N/A';
-        }
+function onProviderChange(){
+  _provider=document.getElementById('aiProvider').value;
+  var meta=PROVIDER_META[_provider];
+  document.getElementById('apiKeyLabel').textContent=meta.label;
+  document.getElementById('apiKey').placeholder=meta.placeholder;
+  document.getElementById('modelBadge').textContent=meta.badge;
+  document.getElementById('apiKey').value='';
+  _apiKey='';
+  document.getElementById('keyStatus').textContent='Key cleared. Enter your '+meta.label+' — stored in memory only.';
+  document.getElementById('keyStatus').style.color='';
+}
 
-        // --- Data Extraction ---
-        const recipient = getValue('Recipient\\(s\\)');
-        const userName = generateUserName(recipient);
-        const replyTo = getValue('Return path');
-        const senderMailFrom = getValue('Sender mail from address');
-        const senderAddress = getValue('Sender address');
-        const senderIp = getValue('Sender IP');
-        const timeReceived = getValue('Time received \\(UTC \\+05:30\\)');
-        const directionality = getValue('Directionality');
-        const networkMessageId = getValue('Network message ID');
-        const internetMessageId = getValue('Internet message ID');
-        const originalLocation = getValue('Original location');
-        const deliveryAction = getValue('Delivery action');
-        const latestDeliveryLocation = getValue('Latest delivery location');
+function saveKey(){
+  var v=document.getElementById('apiKey').value.trim();
+  if(!v){alert('Please enter an API key.');return;}
+  _apiKey=v;
+  _provider=document.getElementById('aiProvider').value;
+  document.getElementById('keyStatus').textContent=PROVIDER_META[_provider].badge+' key saved in memory for this session.';
+  document.getElementById('keyStatus').style.color='var(--green)';
+}
 
-        const country = getValue('Country/Region');
-        const language = getValue('Language');
-        const scl = getValue('Spam Confidence Level');
-        const sfv = getValue('Spam Filtering Verdict');
-        const ipFilter = getValue('IP Filter Verdict');
-        const helo = getValue('HELO/EHLO String');
-        const ptr = getValue('PTR Record');
-        const connectingIp = getValue('Connecting IP Address');
-        const policyCategory = getValue('Protection Policy Category');
-        const bcl = getValue('Bulk Complaint Level');
-        
-        const unknownFields = rawData.match(/Unknown fields\s*(.*);/im)?.[1].replace(':', ': ').trim() || 'N/A';
+function toggleKey(){
+  var inp=document.getElementById('apiKey');
+  var isPass=inp.type==='password';
+  inp.type=isPass?'text':'password';
+  document.getElementById('eyeIcon').innerHTML=isPass
+    ?'<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>'
+    :'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+}
 
-        const authLines = rawData.match(/^(.*\b(spf|dkim|dmarc)=.*)/img);
-        let authResults = 'N/A';
-        if (authLines) {
-            authResults = authLines.map(line => {
-                return line.split(';').map(part => {
-                    const trimmed = part.trim();
-                    if (trimmed.startsWith('spf=') || trimmed.startsWith('dkim=')) {
-                        const match = trimmed.match(/^.*?\)/);
-                        return match ? match[0] : trimmed;
-                    }
-                    if (trimmed.startsWith('dmarc=')) {
-                        return trimmed.split(' ')[0];
-                    }
-                    return trimmed;
-                }).join('\n');
-            }).join('\n');
-        }
-        
-        let senderDomain = 'N/A';
-        if (senderAddress !== 'N/A' && senderAddress.includes('@')) {
-            senderDomain = senderAddress.split('@')[1];
-        }
-        
-        // --- **RESTORED** Analysis Intro Line ---
-        const analysisIntro = `We have observed that "${defang(recipient)}" has received a mail from "${defang(senderMailFrom)}" having subject line "${subject}"`;
+/* ── HELPERS ─────────────────────────────────────────────────── */
+function defang(s){
+  if(typeof s!=='string'||!s) return s;
+  return s.replace(/\./g,'[.]').replace(/:/g,'[:]');
+}
+var SFV_MAP={
+  'NSPM':'NSPM INFO Email Not Spam','SPM':'SPM - Spam','PHSH':'PHSH - Phishing',
+  'MALW':'MALW - Malware','SKB':'SKB - Blocked by bulk mail filtering',
+  'SKI':'SKI - Skipped (internal)','SKN':'SKN - Skipped (non-spam rules)',
+  'SKS':'SKS - Marked as spam by rule','SKQ':'SKQ - Quarantined',
+  'SKD':'SKD - Dropped','BLK':'BLK - Blocked sender','NLI':'NLI - Not listed'
+};
+function getHdr(raw,key){
+  var re=new RegExp('^'+key+':\\s*(.+(?:\\r?\\n[ \\t].+)*)','im');
+  var m=raw.match(re);
+  if(!m) return '';
+  return m[1].replace(/\r?\n[ \t]+/g,' ').trim();
+}
+function ffField(ff,key){
+  var re=new RegExp('(?:^|[;\\s])'+key+':([^;\\r\\n]+)','i');
+  var m=ff.match(re);
+  return m?m[1].trim():'';
+}
+function setF(id,val){var el=document.getElementById(id);if(el)el.value=val||'';}
+function g(id){var el=document.getElementById(id);return el?el.value.trim():'';}
+function domainOf(email){
+  if(!email||!email.includes('@')) return email||'N/A';
+  return email.split('@')[1];
+}
 
-        // --- **NEW** Block 1: Incident Description ---
-        const descriptionText = `Hi Team,
-SOC team has observed “Email reported by user as malware or phish”.
-Incident ID: ${incidentId}
-Priority: P3
-Creation Time: ${creationTime}
-Users: ${userName}
-User principal name: ${defang(recipient)}
-Sender address: ${defang(senderAddress)}
-Subject: ${subject}`;
-        
-        document.getElementById('incidentDescriptionOutput').value = descriptionText;
+/* ── PARSE ───────────────────────────────────────────────────── */
+function parseAll(){
+  var raw=document.getElementById('rawHeader').value;
+  var del=document.getElementById('rawDelivery').value;
+  if(!raw.trim()){alert('Please paste the raw email header first.');return;}
 
-        // --- **NEW** Block 2: Technical Analysis ---
-        const technicalText = `**Analysis**
-${analysisIntro}
+  var fromRaw=getHdr(raw,'From');
+  var aMatch=fromRaw.match(/<([^>]+)>/);
+  var senderAddr=aMatch?aMatch[1].trim():fromRaw.trim();
 
-**Email Header Details**
-Subject Line: ${subject}
-Sender Address: ${defang(senderAddress)}
-Reply To: ${defang(replyTo)}
-Sender Mail from Address: ${defang(senderMailFrom)}
-Sender IP: ${defang(senderIp)}
-Recipient(s): ${defang(recipient)}
-Time Received: ${timeReceived}
-Directionality: ${directionality}
-Network Message ID: ${networkMessageId}
-Internet Message ID: ${defang(internetMessageId)}
+  var toRaw=getHdr(raw,'To');
+  var recipient=toRaw.replace(/^<|>$/g,'').trim();
 
-**Delivery Details**
-Original location: ${originalLocation}
-Delivery action: ${deliveryAction}
-Latest delivery location: ${latestDeliveryLocation}
+  var subject=getHdr(raw,'Subject');
 
-**Authentication-Results**
-${defang(authResults)}
+  var rpRaw=getHdr(raw,'Return-Path');
+  var returnPath=rpRaw.replace(/^<|>$/g,'').trim();
 
-**Additional Details**
-Country/Region - ${country}
-Language - ${language}
-Spam Confidence Level - ${scl}
-Spam Filtering Verdict - ${sfv}
-IP Filter Verdict - ${ipFilter}
-HELO/EHLO String - ${defang(helo)}
-PTR Record - ${defang(ptr)}
-Connecting IP Address - ${defang(connectingIp)}
-Protection Policy Category - ${policyCategory}
-Unknown fields - ${unknownFields}
-Bulk Complaint Level: ${bcl}
+  var date=getHdr(raw,'Date');
+  var msgId=getHdr(raw,'Message-ID').replace(/^<|>$/g,'').trim();
 
-**Reputation of Sender IP** – ${defang(senderIp)}
-ISP: [Please check and fill] | Location: [Please check and fill]
-IPVoid : [Please check and fill]
-VirusTotal : [Please check and fill]
-AbuseIPDB: [Please check and fill]
+  var networkMsgId='';
+  var nmMatch=raw.match(/X-MS-Exchange-Organization-Network-Message-Id:\s*(\S+)/i)
+              ||raw.match(/X-MS-Exchange-CrossTenant-Network-Message-Id:\s*(\S+)/i);
+  if(nmMatch) networkMsgId=nmMatch[1].trim();
 
-**Reputation of Domain** - ${defang(senderDomain)} - [Please check registration age]
-Virustotal: [Please check and fill]
-UrlVoid : [Please check and fill]
-Symantec category: [Please check and fill]
+  var ff='';
+  var ffMatch=raw.match(/X-Forefront-Antispam-Report:\s*([\s\S]*?)(?=\r?\n\S)/i);
+  if(ffMatch) ff=ffMatch[1].replace(/\r?\n[ \t]+/g,' ');
 
-**URLs Observed**
-Total URL's: ${linkCount}
-Url Details: [Please paste URL details here]
+  var senderIp='';
+  var cipMatch=ff.match(/CIP:([0-9a-fA-F:.]+)/i);
+  if(cipMatch){senderIp=cipMatch[1];}
+  else{var rcvMatch=raw.match(/\(([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\)\s+by\s+\S+\.mail\.protection\.outlook/i);if(rcvMatch)senderIp=rcvMatch[1];}
+  var connectIp=cipMatch?cipMatch[1]:senderIp;
 
-**Attachments Observed**
-Total Attachments: ${attachmentCount}
-Attachment Details: [Please paste attachment details here]
+  var helo=ffField(ff,'H');
+  var ptr=ffField(ff,'PTR');
+  var scl='';var sclMatch=ff.match(/SCL:(-?[0-9]+)/i)||raw.match(/X-MS-Exchange-Organization-SCL:\s*(-?[0-9]+)/i);if(sclMatch)scl=sclMatch[1];
+  var sfvCode=ffField(ff,'SFV');var sfvFull=SFV_MAP[sfvCode]||sfvCode;
+  var ipf=ffField(ff,'IPV');var ctry=ffField(ff,'CTRY');var lang=ffField(ff,'LANG');
+  var dirCode=ffField(ff,'DIR');
+  if(!dirCode){var dm=raw.match(/X-MS-Exchange-Organization-MessageDirectionality:\s*(\S+)/i);if(dm)dirCode=dm[1].trim();}
+  var dirFull=dirCode==='INB'?'Inbound':dirCode==='OUT'?'Outbound':dirCode||'Incoming';
+  var unknownDir=dirCode?'DIR: '+dirCode:'N/A';
+  var bcl='';var bclMatch=raw.match(/BCL:([0-9]+)/i);if(bclMatch)bcl=bclMatch[1];
 
-**Observation**
-[Please add your final observation here.]
-`;
-        document.getElementById('technicalAnalysisOutput').value = technicalText;
+  // Auth results
+  var authRaw='N/A';
+  var authMatch=raw.match(/^Authentication-Results:(.+(?:\r?\n[ \t].+)*)/im);
+  if(authMatch){
+    var joined=authMatch[1].replace(/\r?\n[ \t]+/g,' ').trim();
+    var parts=joined.split(/;/).map(function(s){return s.trim();}).filter(Boolean);
+    var lines=[];
+    parts.forEach(function(p){
+      if(/^spf=/i.test(p)){var m2=p.match(/^(spf=\w+)\s+\(([^)]+)\)/i);lines.push(m2?'spf='+m2[1].split('=')[1]+' ('+m2[2]+')':p.split(';')[0].trim());}
+      else if(/^dkim=/i.test(p)){var m3=p.match(/^(dkim=\w+)\s+\(([^)]+)\)/i);lines.push(m3?'dkim='+m3[1].split('=')[1]+' ('+m3[2]+')':p.split(' ').slice(0,2).join(' '));}
+      else if(/^dmarc=/i.test(p)){lines.push(p.split(' ')[0]);}
+      else if(/^compauth=/i.test(p)){lines.push(p.split(' ').slice(0,2).join(' '));}
     });
+    if(lines.length)authRaw=lines.join('\n');
+  }
 
-    // Generic copy function
-    function copyText(elementId) {
-        const outputArea = document.getElementById(elementId);
-        outputArea.select();
-        outputArea.setSelectionRange(0, 99999);
-        navigator.clipboard.writeText(outputArea.value).then(() => {
-            alert('Copied to clipboard!');
-        }).catch(err => {
-            console.error('Failed to copy: ', err);
-            alert('Failed to copy text.');
-        });
+  var origLoc='Inbox/folder';var mOL=del.match(/Original location\s*[\r\n]+([^\r\n]+)/i);if(mOL)origLoc=mOL[1].trim();
+  var delivAct='Delivered';var mDA=del.match(/Delivery action\s*[\r\n]+([^\r\n]+)/i);if(mDA)delivAct=mDA[1].trim();
+  var latestLoc='Inbox/folder';var mLL=del.match(/Latest delivery location\s*[\r\n]+([^\r\n]+)/i);if(mLL)latestLoc=mLL[1].trim();
+
+  setF('f_subject',subject);setF('f_senderAddr',senderAddr);setF('f_replyTo',returnPath);setF('f_senderMailFrom',returnPath);
+  setF('f_senderIp',senderIp);setF('f_recipient',recipient);setF('f_timeReceived',date);setF('f_directionality',dirFull);
+  setF('f_networkMsgId',networkMsgId);setF('f_internetMsgId',msgId);setF('f_origLoc',origLoc);setF('f_deliveryAct',delivAct);
+  setF('f_latestLoc',latestLoc);setF('f_authResults',authRaw);setF('f_country',ctry||'N/A');setF('f_lang',lang);
+  setF('f_scl',scl);setF('f_sfv',sfvFull);setF('f_ipf',ipf);setF('f_helo',helo);setF('f_ptr',ptr);
+  setF('f_connectIp',connectIp);setF('f_policycat','NONE');setF('f_unknown',unknownDir);setF('f_bcl',bcl);
+
+  // Update AI panel domain cards
+  var senderDomain=domainOf(senderAddr);
+  var mailFromDomain=domainOf(returnPath);
+  var replyToDomain=domainOf(returnPath);
+  document.getElementById('ai_senderDomain').textContent=senderDomain||'—';
+  document.getElementById('ai_mailFromDomain').textContent=mailFromDomain||'—';
+  document.getElementById('ai_replyToDomain').textContent=replyToDomain||'—';
+  setF('ai_senderIp',senderIp);
+  setF('ai_subject',subject);
+
+  // Auth chips in AI panel
+  var spf=(authRaw.match(/spf=(\w+)/i)||['','?'])[1];
+  var dkim=(authRaw.match(/dkim=(\w+)/i)||['','?'])[1];
+  var dmarc=(authRaw.match(/dmarc=(\w+)/i)||['','?'])[1];
+  var compauth=(authRaw.match(/compauth=(\w+)/i)||['','?'])[1];
+  var as=document.getElementById('ai_authSummary');
+  as.innerHTML='<span class="label">Auth:</span>'+chip(spf,'SPF')+chip(dkim,'DKIM')+chip(dmarc,'DMARC')+(compauth&&compauth!=='?'?chip(compauth,'CompAuth'):'');
+
+  renderPreview(senderAddr,returnPath,senderIp,recipient,subject,date,dirFull,origLoc,delivAct,latestLoc,ctry,lang,scl,sfvFull,ipf,bcl,authRaw,networkMsgId);
+  sw('prev');
+}
+
+function chip(v,label){
+  var lv=(v||'').toLowerCase();var cls='chip-neu';
+  if(['pass','none'].indexOf(lv)>-1)cls='chip-ok';
+  else if(['fail','reject'].some(function(x){return lv.indexOf(x)>-1;}))cls='chip-err';
+  else if(['softfail','quarantine'].some(function(x){return lv.indexOf(x)>-1;}))cls='chip-warn';
+  return '<span class="chip '+cls+'">'+(label?label+' ':'')+v+'</span>';
+}
+
+function renderPreview(senderAddr,returnPath,senderIp,recipient,subject,date,dirFull,origLoc,delivAct,latestLoc,ctry,lang,scl,sfvFull,ipf,bcl,authRaw,networkMsgId){
+  var spf=(authRaw.match(/spf=(\w+)/i)||['','?'])[1];
+  var dkim=(authRaw.match(/dkim=(\w+)/i)||['','?'])[1];
+  var dmarc=(authRaw.match(/dmarc=(\w+)/i)||['','?'])[1];
+  var rows=[
+    ['Subject',subject||'—'],['Sender Address',defang(senderAddr)||'—'],
+    ['Reply To',defang(returnPath)||'—'],['Sender Mail From',defang(returnPath)||'—'],
+    ['Sender IP',defang(senderIp)||'—'],['Recipient',defang(recipient)||'—'],
+    ['Date',date||'—'],['Directionality',dirFull||'—'],['Network Msg ID',networkMsgId||'—'],
+    ['Original Location',origLoc||'—'],['Delivery Action',delivAct||'—'],
+    ['Latest Location',latestLoc||'—'],['Country / Lang',(ctry||'N/A')+' / '+(lang||'N/A')],
+    ['SCL / BCL',(scl||'N/A')+' / '+(bcl||'N/A')],['SFV',sfvFull||'—']
+  ];
+  var html='<div class="card-title">Parsed Preview</div><div class="prev-grid">';
+  rows.forEach(function(r){html+='<span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span>';});
+  html+='</div><div class="auth-row" style="margin-top:14px"><span style="font-size:11px;color:var(--text3);margin-right:4px">Auth:</span>';
+  html+=chip(spf,'SPF')+chip(dkim,'DKIM')+chip(dmarc,'DMARC')+'</div>';
+  document.getElementById('previewCard').innerHTML=html;
+}
+
+/* ── GENERATE OUTPUT ─────────────────────────────────────────── */
+function genOutput(){
+  var incidentId=g('incidentId')||'[Fill Incident ID]';
+  var creationTime=g('creationTime')||'[Fill Creation Time]';
+  var priority=g('priority')||'P3';
+  var subject=g('f_subject')||'N/A';
+  var senderAddr=g('f_senderAddr')||'N/A';
+  var replyTo=g('f_replyTo')||'N/A';
+  var senderMailFrom=g('f_senderMailFrom')||'N/A';
+  var senderIp=g('f_senderIp')||'N/A';
+  var recipient=g('f_recipient')||'N/A';
+  var timeReceived=g('f_timeReceived')||'N/A';
+  var dir=g('f_directionality')||'N/A';
+  var networkMsgId=g('f_networkMsgId')||'N/A';
+  var internetMsgId=g('f_internetMsgId')||'N/A';
+  var origLoc=g('f_origLoc')||'N/A';
+  var delivAct=g('f_deliveryAct')||'N/A';
+  var latestLoc=g('f_latestLoc')||'N/A';
+  var authResults=g('f_authResults')||'N/A';
+  var country=g('f_country')||'N/A';
+  var lang=g('f_lang')||'N/A';
+  var scl=g('f_scl')||'N/A';
+  var sfv=g('f_sfv')||'N/A';
+  var ipf=g('f_ipf')||'N/A';
+  var helo=g('f_helo')||'N/A';
+  var ptr=g('f_ptr')||'N/A';
+  var connectIp=g('f_connectIp')||'N/A';
+  var policycat=g('f_policycat')||'N/A';
+  var unknown=g('f_unknown')||'N/A';
+  var bcl=g('f_bcl')||'N/A';
+  var attachCount=g('attachCount')||'[Please check and fill]';
+  var linkCount=g('linkCount')||'[Please check and fill]';
+  var urlDetails=g('urlDetails')||'[Please paste URL details here]';
+  var attachDetails=g('attachDetails')||'[Please paste attachment details here]';
+  var senderDomain=senderAddr.includes('@')?senderAddr.split('@')[1]:'N/A';
+  var namePart=recipient.includes('@')?recipient.split('@')[0]:'';
+  var userName=namePart.split('.').map(function(n){return n.charAt(0).toUpperCase()+n.slice(1);}).join(' ')||'N/A';
+  var analysis='We have observed that "'+defang(recipient)+'" has received a mail from "'+defang(senderMailFrom)+'" having subject line "'+subject+'"';
+  var out=[
+    'Hi Team,',
+    'SOC team has observed "Email reported by user as malware or phish".',
+    'Incident ID: '+incidentId,'Priority: '+priority,'Creation Time: '+creationTime,
+    'Users: '+userName,'User principal name: '+defang(recipient),
+    'Sender address: '+defang(senderAddr),'Subject: '+subject,'',
+    '**Analysis**',analysis,'',
+    '**Email Header Details**',
+    'Subject Line: '+subject,'Sender Address: '+defang(senderAddr),
+    'Reply To: '+defang(replyTo),'Sender Mail from Address: '+defang(senderMailFrom),
+    'Sender IP: '+defang(senderIp),'Recipient(s): '+defang(recipient),
+    'Time Received: '+timeReceived,'Directionality: '+dir,
+    'Network Message ID: '+networkMsgId,'Internet Message ID: '+defang(internetMsgId),'',
+    '**Delivery Details**','Original location: '+origLoc,
+    'Delivery action: '+delivAct,'Latest delivery location: '+latestLoc,'',
+    '**Authentication-Results**',defang(authResults),'',
+    '**Additional Details**',
+    'Country/Region - '+country,'Language - '+lang,
+    'Spam Confidence Level - '+scl,'Spam Filtering Verdict - '+sfv,
+    'IP Filter Verdict - '+ipf,'HELO/EHLO String - '+defang(helo),
+    'PTR Record - '+defang(ptr),'Connecting IP Address - '+defang(connectIp),
+    'Protection Policy Category - '+policycat,'Unknown fields - '+unknown,
+    'Bulk Complaint Level: '+bcl,'',
+    '**Reputation of Sender IP** \u2013 '+defang(senderIp),
+    'ISP: [Please check and fill] | Location: [Please check and fill]',
+    'IPVoid : [Please check and fill]','VirusTotal : [Please check and fill]',
+    'AbuseIPDB: [Please check and fill]','',
+    '**Reputation of Domain** - '+defang(senderDomain)+' - [Please check registration age]',
+    'Virustotal: [Please check and fill]','UrlVoid : [Please check and fill]',
+    'Symantec category: [Please check and fill]','',
+    "**URLs Observed**","Total URL's: "+linkCount,'Url Details: '+urlDetails,'',
+    '**Attachments Observed**','Total Attachments: '+attachCount,
+    'Attachment Details: '+attachDetails,'',
+    '**Observation**','[Please add your final observation here.]'
+  ].join('\n');
+  document.getElementById('formattedOut').value=out;
+  sw('out');
+}
+
+function copyOut(){
+  var el=document.getElementById('formattedOut');el.select();el.setSelectionRange(0,99999);
+  navigator.clipboard.writeText(el.value).then(function(){
+    var btn=event.currentTarget;var orig=btn.innerHTML;
+    btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+    setTimeout(function(){btn.innerHTML=orig;},1800);
+  });
+}
+
+/* ── AI ANALYSIS ─────────────────────────────────────────────── */
+async function runAI(){
+  if(!_apiKey){alert('Please save your API key in the AI Engine Configuration section first.');return;}
+
+  var senderDomain=document.getElementById('ai_senderDomain').textContent.trim();
+  var mailFromDomain=document.getElementById('ai_mailFromDomain').textContent.trim();
+  var replyToDomain=document.getElementById('ai_replyToDomain').textContent.trim();
+  var senderIp=g('ai_senderIp');
+  var subject=g('ai_subject');
+  var authRaw=g('f_authResults');
+  var senderAddr=g('f_senderAddr');
+  var recipient=g('f_recipient');
+  var sfv=g('f_sfv');
+  var scl=g('f_scl');
+  var bcl=g('f_bcl');
+  var helo=g('f_helo');
+  var ptr=g('f_ptr');
+  var delivAct=g('f_deliveryAct');
+  var latestLoc=g('f_latestLoc');
+  var extra=g('ai_extraContext');
+
+  var respBox=document.getElementById('aiResponse');
+  var runBtn=document.getElementById('aiRunBtn');
+  respBox.className='ai-response-box loading';
+  respBox.innerHTML='<div class="pulse"><span></span><span></span><span></span></div> Analysing email headers...';
+  runBtn.disabled=true;
+  document.getElementById('copyAiBtn').style.display='none';
+  document.getElementById('appendAiBtn').style.display='none';
+
+  var prompt=
+'You are an expert SOC (Security Operations Center) L1 analyst specialising in email threat analysis. Analyse the following email header data and provide a structured security assessment.\n\n'+
+'## Email Header Data\n\n'+
+'**Recipient:** '+recipient+'\n'+
+'**Sender Address (From:):** '+senderAddr+'\n'+
+'**Subject:** '+subject+'\n'+
+'**Sender IP:** '+senderIp+'\n\n'+
+'## Domain Analysis\n\n'+
+'**Sender Domain** (from From: header): '+senderDomain+'\n'+
+'**Mail From Domain** (from Return-Path): '+mailFromDomain+'\n'+
+'**Reply-To Domain** (from Return-Path): '+replyToDomain+'\n\n'+
+'**Domain Alignment Check:**\n'+
+'- Do the Sender Domain and Mail From Domain match? '+(senderDomain===mailFromDomain?'YES - Domains align':'NO - Domain mismatch detected ('+senderDomain+' vs '+mailFromDomain+')')+'\n'+
+'- Is the Reply-To domain different from the Sender domain? '+(replyToDomain!==senderDomain?'YES - Reply-To domain differs ('+replyToDomain+')':'NO - Reply-To matches sender domain')+'\n\n'+
+'## Authentication Results\n\n'+authRaw+'\n\n'+
+'## Additional Header Details\n\n'+
+'- SCL (Spam Confidence Level): '+scl+'\n'+
+'- BCL (Bulk Complaint Level): '+bcl+'\n'+
+'- SFV (Spam Filtering Verdict): '+sfv+'\n'+
+'- HELO/EHLO: '+helo+'\n'+
+'- PTR Record: '+ptr+'\n'+
+'- Delivery Action: '+delivAct+'\n'+
+'- Latest Delivery Location: '+latestLoc+'\n'+
+(extra?'\n## Analyst Notes\n\n'+extra+'\n':'')+
+'\n## Your Task\n\n'+
+'Provide a structured analysis with the following sections:\n\n'+
+'1. **Domain Reputation Assessment** — Analyse the sender domain, mail-from domain, and reply-to domain. Flag any mismatches, lookalike domains, or suspicious characteristics. Comment on whether domain alignment is consistent.\n\n'+
+'2. **Authentication Analysis** — Interpret the SPF, DKIM, DMARC, and CompAuth results. Explain what each passing or failing result means in context. Note if authentication passing still leaves room for abuse (e.g. legitimate infrastructure being abused).\n\n'+
+'3. **Threat Indicators** — List specific indicators of concern or indicators of legitimacy found in these headers. Include IP/domain behaviour, delivery anomalies, BCL/SCL scoring, and any mismatch patterns.\n\n'+
+'4. **Risk Verdict** — Provide a clear verdict: Legitimate / Suspicious / Phishing / Spam / Malware. Give a brief justification.\n\n'+
+'5. **Recommended Action** — What should the SOC analyst do next? (e.g. escalate, block sender, delete from mailbox, no action needed)\n\n'+
+'Be concise, factual, and use SOC analyst language. Do not repeat the raw data back verbatim.';
+
+  try {
+    var text='';
+
+    if(_provider==='claude'){
+      /* ── Anthropic Claude ── */
+      var res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':_apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:prompt}]})
+      });
+      if(!res.ok){var e=await res.json().catch(function(){return {};});throw new Error('Claude API '+res.status+': '+(e.error&&e.error.message?e.error.message:res.statusText));}
+      var d=await res.json();
+      if(d.content&&d.content.length>0)d.content.forEach(function(b){if(b.type==='text')text+=b.text;});
+
+    } else if(_provider==='gemini'){
+      /* ── Google Gemini 2.0 Flash ── */
+      var gemUrl='https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+encodeURIComponent(_apiKey);
+      var res=await fetch(gemUrl,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:1500}})
+      });
+      if(!res.ok){var e=await res.json().catch(function(){return {};});throw new Error('Gemini API '+res.status+': '+(e.error&&e.error.message?e.error.message:res.statusText));}
+      var d=await res.json();
+      if(d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts){
+        d.candidates[0].content.parts.forEach(function(p){if(p.text)text+=p.text;});
+      }
+
+    } else if(_provider==='grok'){
+      /* ── Groq (OpenAI-compatible endpoint) ── */
+      var res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+_apiKey},
+        body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:1500,messages:[{role:'user',content:prompt}]})
+      });
+      if(!res.ok){var e=await res.json().catch(function(){return {};});throw new Error('Groq API '+res.status+': '+(e.error&&e.error.message?e.error.message:res.statusText));}
+      var d=await res.json();
+      if(d.choices&&d.choices[0]&&d.choices[0].message)text=d.choices[0].message.content||'';
     }
-</script>
 
+    respBox.className='ai-response-box';
+    respBox.textContent=text||'No response received.';
+    document.getElementById('copyAiBtn').style.display='inline-flex';
+    document.getElementById('appendAiBtn').style.display='inline-flex';
+
+  } catch(err){
+    respBox.className='ai-response-box error';
+    respBox.textContent='Error: '+err.message+'\n\nCheck that your API key is correct and has access to the selected model. Some providers block direct browser requests — if using Claude, ensure the Anthropic API allows browser-origin calls.';
+  }
+
+  runBtn.disabled=false;
+}
+
+function clearAI(){
+  var respBox=document.getElementById('aiResponse');
+  respBox.className='ai-response-box';
+  respBox.textContent='Waiting for analysis...';
+  document.getElementById('copyAiBtn').style.display='none';
+  document.getElementById('appendAiBtn').style.display='none';
+}
+
+function copyAI(){
+  var text=document.getElementById('aiResponse').textContent;
+  navigator.clipboard.writeText(text).then(function(){
+    var btn=document.getElementById('copyAiBtn');var orig=btn.innerHTML;
+    btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+    setTimeout(function(){btn.innerHTML=orig;},1800);
+  });
+}
+
+function appendAIToOutput(){
+  var aiText=document.getElementById('aiResponse').textContent;
+  var outEl=document.getElementById('formattedOut');
+  if(!outEl.value.trim()){alert('Generate the output first, then append AI analysis.');return;}
+  outEl.value=outEl.value+'\n\n**AI Analysis**\n'+aiText;
+  sw('out');
+}
+
+/* ── CLEAR ALL ───────────────────────────────────────────────── */
+function clearAll(){
+  ['rawHeader','rawDelivery','f_subject','f_senderAddr','f_replyTo','f_senderMailFrom',
+   'f_senderIp','f_recipient','f_timeReceived','f_directionality','f_networkMsgId',
+   'f_internetMsgId','f_origLoc','f_deliveryAct','f_latestLoc','f_authResults',
+   'f_country','f_lang','f_scl','f_sfv','f_ipf','f_helo','f_ptr','f_connectIp',
+   'f_policycat','f_unknown','f_bcl','attachCount','linkCount','urlDetails',
+   'attachDetails','formattedOut','ai_extraContext','ai_senderIp','ai_subject'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('previewCard').innerHTML=
+    '<div class="card-title">Parsed Preview</div><p style="color:var(--text3);font-size:13px">Parse raw data first to see preview.</p>';
+  document.getElementById('ai_senderDomain').textContent='—';
+  document.getElementById('ai_mailFromDomain').textContent='—';
+  document.getElementById('ai_replyToDomain').textContent='—';
+  document.getElementById('ai_authSummary').innerHTML='<span class="label">Auth:</span><span style="color:var(--text3);font-size:12px">Parse raw data first to populate auth results.</span>';
+  clearAI();
+  sw('raw');
+}
+</script>
 </body>
 </html>
